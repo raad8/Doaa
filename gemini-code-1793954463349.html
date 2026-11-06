@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الكتاب التفاعلي ثلاثي الأبعاد - فيزياء 2</title>
+  
+  <!-- الخطوط والمكتبات الخارجية -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- مكتبة KaTeX للمعادلات -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+  <!-- Three.js & GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    :root {
+      --paper-bg: #fcf9f2;
+      --paper-line: #e2d7c3;
+      --ink-black: #1a1917;
+      --accent-blue: #1d4ed8;
+      --accent-gold: #b45309;
+      --accent-green: #15803d;
+      --ui-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Cairo', 'Amiri', serif;
+      background-color: #0d0e12;
+      color: var(--ink-black);
+    }
+
+    #webgl-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* بطاقة تفاصيل العناصر 3D عند النقر */
+    .element-info-card {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-right: 4px solid #f59e0b;
+      color: #f8fafc;
+      padding: 16px 20px;
+      border-radius: 12px;
+      width: 310px;
+      box-shadow: var(--ui-shadow);
+      transform: translateX(360px);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: auto;
+    }
+
+    .element-info-card.active {
+      transform: translateX(0);
+    }
+
+    .info-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .info-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
+    .info-card-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .info-card-body {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .info-card-katex {
+      margin-top: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 6px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    /* تعديل اللوحة الجانبية لتكون متمركزة في وسط الشاشة عند الفتح */
+    .book-side-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 20;
+      width: 420px;
+      max-width: 90vw;
+      max-height: 85vh;
+      background: var(--paper-bg);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      border: 2px solid var(--paper-line);
+      overflow-y: auto;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    }
+
+    .book-side-panel.hidden {
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel-close-btn {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .panel-close-btn:hover {
+      background: #cbd5e1;
+    }
+
+    .lesson-header {
+      border-bottom: 2px double var(--ink-black);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      padding-left: 30px;
+    }
+
+    .chapter-tag {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    .lesson-title {
+      font-family: 'Amiri', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--ink-black);
+      line-height: 1.3;
+    }
+
+    .concept-summary {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: #374151;
+      margin-bottom: 14px;
+      text-align: justify;
+    }
+
+    .formula-box {
+      background: rgba(243, 238, 222, 0.9);
+      border-right: 4px solid var(--accent-gold);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+
+    .formula-katex {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .formula-desc {
+      font-size: 0.78rem;
+      color: #4b5563;
+      line-height: 1.4;
+    }
+
+    .vocab-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .vocab-item {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px dashed var(--paper-line);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .vocab-term {
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+      margin-bottom: 2px;
+    }
+
+    .vocab-def {
+      font-size: 0.72rem;
+      color: #4b5563;
+      line-height: 1.3;
+    }
+
+    /* طية الصفحة والاختبار */
+    .quiz-container {
+      background: #f3efe6;
+      border: 1px solid #e2d9c5;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .quiz-question {
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quiz-opt-btn {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      text-align: right;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .quiz-opt-btn:hover {
+      background: #f8fafc;
+    }
+
+    .quiz-opt-btn.selected-correct {
+      background: #dcfce7;
+      border-color: var(--accent-green);
+      color: #14532d;
+      font-weight: 700;
+    }
+
+    .quiz-opt-btn.selected-wrong {
+      background: #fee2e2;
+      border-color: #ef4444;
+      color: #7f1d1d;
+      font-weight: 700;
+    }
+
+    .flap-wrapper {
+      position: relative;
+      margin-top: 8px;
+    }
+
+    .flap-cover {
+      background: #e6dfcf;
+      border: 1px dashed var(--accent-gold);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .flap-cover:hover {
+      background: #ded5c3;
+    }
+
+    .flap-content {
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #713f12;
+      display: none;
+      margin-top: 6px;
+    }
+
+    .flap-content.show {
+      display: block;
+    }
+
+    /* HUD Controls */
+    .hud-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 40px;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--ui-shadow);
+      color: #f8fafc;
+    }
+
+    .hud-btn {
+      background: transparent;
+      border: none;
+      color: #f8fafc;
+      font-size: 1.1rem;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .hud-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .hud-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0 10px;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      max-width: 240px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* TOC Drawer */
+    .toc-drawer {
+      position: absolute;
+      bottom: 75px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 12px;
+      width: 300px;
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+
+    .toc-drawer.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toc-item {
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: #cbd5e1;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+
+    .toc-item:hover, .toc-item.active {
+      background: var(--accent-blue);
+      color: #ffffff;
+    }
+
+    .hint-toast {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid #f59e0b;
+      color: #fbbf24;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      z-index: 5;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL 3D Canvas -->
+  <div id="webgl-container"></div>
+
+  <div class="hint-toast">💡 انقر على زر "📖" لعرض شرح الدرس بالكامل في منتصف الشاشة!</div>
+
+  <!-- بطاقة تفاصيل العنصر عند النقر على المجسم 3D -->
+  <div class="element-info-card" id="element-info-card">
+    <div class="info-card-header">
+      <div class="info-card-title" id="info-card-title">اسم العنصر</div>
+      <button class="info-card-close" onclick="closeElementInfo()">✕</button>
+    </div>
+    <div class="info-card-body" id="info-card-body">التفاصيل الفيزيائية المباشرة تعبر هنا...</div>
+    <div class="info-card-katex" id="info-card-katex"></div>
+  </div>
+
+  <!-- اللوحة الجانبية المتمركزة تماماً في منتصف الشاشة -->
+  <div class="book-side-panel hidden" id="book-side-panel">
+    <button class="panel-close-btn" onclick="toggleBookPanel()">✕</button>
+    <div class="lesson-header">
+      <div class="chapter-tag" id="ui-chapter-tag">الفصل 1 - الدرس 1-1</div>
+      <h1 class="lesson-title" id="ui-lesson-title">عنوان الدرس</h1>
+    </div>
+    <p class="concept-summary" id="ui-concept-summary">ملخص المفهوم الأساسي من منهج فيزياء 2...</p>
+    
+    <div class="formula-box">
+      <div class="formula-katex" id="ui-formula-katex"></div>
+      <div class="formula-desc" id="ui-formula-desc">وصف المعادلة العلمية حسب المقرر</div>
+    </div>
+
+    <div class="vocab-list" id="ui-vocab-list"></div>
+
+    <div class="quiz-container">
+      <div class="quiz-question" id="ui-quiz-question">السؤال التفاعلي؟</div>
+      <div class="quiz-options" id="ui-quiz-options"></div>
+    </div>
+
+    <div class="flap-wrapper">
+      <div class="flap-cover" id="ui-flap-cover" onclick="toggleFlap()">🔒 طي الصفحة: اكتشف التفسير العلمي</div>
+      <div class="flap-content" id="ui-flap-content">التفسير العلمي المباشر من كتاب الفيزياء...</div>
+    </div>
+  </div>
+
+  <!-- HUD Control Bar -->
+  <div class="hud-controls">
+    <button class="hud-btn" onclick="toggleTOC()" title="قائمة الدروس">≡</button>
+    <button class="hud-btn" onclick="toggleBookPanel()" title="إظهار/إخفاء شرح الدرس مختصر بالوسط">📖</button>
+    <button class="hud-btn" onclick="navigateSpread(-1)" title="الدرس السابق">❮</button>
+    <div class="hud-title" id="hud-lesson-name">1. حركة الكواكب وقوانين كبلر</div>
+    <button class="hud-btn" onclick="navigateSpread(1)" title="الدرس التالي">❯</button>
+    <button class="hud-btn" onclick="resetCameraView()" title="إعادة ضبط الكاميرا">↺</button>
+  </div>
+
+  <!-- TOC Drawer -->
+  <div class="toc-drawer" id="toc-drawer"></div>
+
+  <script>
+    /* ==========================================
+       1. البيانات والتفاصيل الشاملة المعتمدة حكراً من منهج فيزياء 2
+       ========================================== */
+    const textbookData = {
+      spreads: [
+        {
+          id: 0,
+          chapterTag: "الفصل 1: الجاذبية | القسم 1-1",
+          title: "حركة الكواكب وقوانين كبلر",
+          summary: "اكتشف كبلر أن الكواكب تتحرك في مدارات إهليلجية وتكون الشمس في إحدى البؤرتين. وتزداد سرعة الكوكب عندما يكون قريباً من الشمس (الحضيض) وتلقائياً تقل سرعته عندما يبتعد عنها (الأوج).",
+          formula: "(\\frac{T_A}{T_B})^2 = (\\frac{r_A}{r_B})^3",
+          formulaDesc: "قانون كبلر الثالث: مربع نسبة الزمنين الدوريين لكوكبين حول الشمس يساوي مكعب نسبة متوسط بعديهما عن الشمس.",
+          vocab: [
+            { term: "المدار الإهليلجي", def: "مسار بيضاوي الشكل له بؤرتان." },
+            { term: "الزمن الدوري (T)", def: "الزمن اللازم للجسم ليتم دورة كاملة." },
+            { term: "الحضيض", def: "أقرب نقطة للشمس في مدار الكوكب." },
+            { term: "الأوج", def: "أبعد نقطة للشمس في مدار الكوكب." }
+          ],
+          quiz: {
+            question: "ماذا يحدث لسرعة الكوكب عندما يتحرك مقترباً من نقطة الحضيض؟",
+            options: ["تزداد سرعته", "تقل سرعته", "تبقى سرعته ثابتة", "تنعدم السرعة"],
+            correct: 0
+          },
+          flap: "طبقاً لقانون كبلر الثاني: الخط الوهمي الممتد من الشمس إلى الكوكب يمسح مساحات متساوية في أزمنة متساوية، لذا يتحرك الكوكب أسرع عندما يكون قريباً من الشمس.",
+          elementsDetails: {
+            "sun": {
+              title: "الشمس (Sun)",
+              body: "تقع الشمس في إحدى بؤرتي المدار الإهليلجي للكوكب وتُمثل مركز الجاذبية في النظام الشمسي.",
+              katex: "M_{sun} \\approx 1.99 \\times 10^{30} \\text{ kg}"
+            },
+            "planet": {
+              title: "الكوكب (Planet)",
+              body: "جسم يدور حول الشمس في مسار إهليلجي، وتتغير سرعته الزاوية والمماسية بحسب قربه أو بعده عن البؤرة.",
+              katex: "v = \\sqrt{\\frac{G M}{r}}"
+            },
+            "orbit": {
+              title: "المدار الإهليلجي (Elliptic Orbit)",
+              body: "مسار الكوكب قطع ناقص يمتلك بؤرتين، الشمس في إحداهما والبؤرة الأخرى فارغة.",
+              katex: "e = \\frac{c}{a}"
+            }
+          }
+        },
+        {
+          id: 1,
+          chapterTag: "الفصل 1: الجاذبية | القسم 1-2",
+          title: "قانون الجذب الكوني وتجربة كافندش",
+          summary: "ينص قانون الجذب الكوني لنيوتن على أن الأجسام تجذب أجساماً أخرى بقوة تتناسب طردياً مع حاصل ضرب كتلها وعكسياً مع مربع المسافة بين مراكزها. وقام كافندش بقياس ثابت الجذب الكوني G باستخدام ميزان الالتواء.",
+          formula: "F = G \\frac{m_1 m_2}{r^2}",
+          formulaDesc: "قانون الجذب الكوني حيث (G = 6.67 × 10⁻¹¹ N·m²/kg²).",
+          vocab: [
+            { term: "ثابت الجذب الكوني (G)", def: "ثابت فيزياء عالمي قيمته 6.67×10⁻¹¹." },
+            { term: "قانون التربيع العكسي", def: "تغير القوة عكسياً مع مربع المسافة r²." },
+            { term: "ميزان الالتواء", def: "جهاز حساس استخدمه كافندش لقياس قوة الجاذبية." }
+          ],
+          quiz: {
+            question: "إذا تضاعفت المسافة r بين مركزين كتلين 3 مرات، فماذا يحدث للقوة الجاذبة F؟",
+            options: ["تقل إلى 1/9 من قيمتها الأصلية", "تقل إلى 1/3", "تتضاعف 9 مرات", "تظل ثابتة دون تغيير"],
+            correct: 0
+          },
+          flap: "طبقاً لقانون التربيع العكسي، عندما تزيد المسافة بمقدار 3 فإن المربع يصبح (3² = 9)، فتضعف قوة الجاذبية إلى التسع.",
+          elementsDetails: {
+            "bigSphere": {
+              title: "الكرة الرصاصية الكبيرة",
+              body: "كتلة كبيرة تُحدث قوة تجاذب ملموسة تجذب الكرات الصغيرة المعلقة.",
+              katex: "m_1 \\text{ (كتلة كبيرة)}"
+            },
+            "smallSphere": {
+              title: "الكرة الصغيرة المعلقة",
+              body: "كرة صغيرة مثبتة في طرف ذراع ميزان الالتواء تنحرف تحت تأثير قوة الجاذبية.",
+              katex: "m_2 \\text{ (كتلة معلقة)}"
+            },
+            "wire": {
+              title: "سلك الالتواء الحساس",
+              body: "سلك رفيع يلتوي بزاوية محددة عند انجذاب الكتل، ومنه تم حساب قيم الثابت G.",
+              katex: "\\tau = -\\kappa \\theta"
+            }
+          }
+        },
+        {
+          id: 2,
+          chapterTag: "الفصل 2: الحركة الدورانية | القسم 2-1",
+          title: "وصف الحركة الدورانية والكميات الزاوية",
+          summary: "تُقاس الإزاحة الزاوية بالراديان (rad). وترتبط الكميات الخطية بالكميات الزاوية المقابلة لها عبر ضرب الكمية الزاوية في نصف قطر الدوران r.",
+          formula: "d = r\\theta, \\quad v = r\\omega, \\quad a = r\\alpha",
+          formulaDesc: "العلاقة بين السرعة والإزاحة التسارع الخطي المماسي والكميات الزاوية.",
+          vocab: [
+            { term: "الراديان (rad)", def: "زاوية الدوران التي يكون طول القوس فيها مساوياً لنصف القطر." },
+            { term: "السرعة الزاوية (ω)", def: "التغير في الإزاحة الزاوية مقسوماً على الزمن (rad/s)." },
+            { term: "التسارع الزاوي (α)", def: "التغير في السرعة الزاوية مقسوماً على الزمن (rad/s²)." }
+          ],
+          quiz: {
+            question: "أي نقطة على قرص يدور بانتظام تمتلك أكبر سرعة خطية مماسية v؟",
+            options: ["النقطة الواقعة عند الحافة الخارجية", "النقطة بالقرب من مركز الدوران", "جميع النقاط تمتلك نفس السرعة الخطية", "النقطة المحورية بالمركز"],
+            correct: 0
+          },
+          flap: "جميع النقاط على الجسم الصلب تملك نفس السرعة الزاوية ω، ولكن النقطة الخارجية تملك أكبر نصف قطر r وبالتالي أسرع خطياً (v = r·ω).",
+          elementsDetails: {
+            "disc": {
+              title: "القرص الدوار",
+              body: "جسم صلب يدور حول محور ثابت ويمتلك السرعة الزاوية نفسها لكافة أجزائه.",
+              katex: "\\omega = \\frac{\\Delta \\theta}{\\Delta t}"
+            },
+            "outerNode": {
+              title: "نقطة الحافة الخارجية",
+              body: "نصف القطر r كبير جداً، لذا تمتلك أقصى سرعة خطية مماسية v.",
+              katex: "v = r_{max} \\cdot \\omega"
+            },
+            "innerNode": {
+              title: "النقطة الداخلية",
+              body: "تقع على مسافة r صغيرة من المركز وسرعتها الخطية v أقل بكثير.",
+              katex: "v = r_{inner} \\cdot \\omega"
+            }
+          }
+        },
+        {
+          id: 3,
+          chapterTag: "الفصل 2: الحركة الدورانية | Section 2-2",
+          title: "ديناميكا الحركة الدورانية والعزم والاتزان",
+          summary: "العزم (τ) هو مقياس لمقدرة القوة على إحداث دوران للجسم. ولكي يكون الجسم في حالة اتزان ميكانيكي تام يجب أن تكون محصلة القوى صفراً ومحصلة العزوم صفراً.",
+          formula: "\\tau = F r \\sin\\theta, \\quad \\sum F = 0, \\quad \\sum \\tau = 0",
+          formulaDesc: "قانون العزم الميكانيكي وشرطا الاتزان الميكانيكي التام.",
+          vocab: [
+            { term: "ذراع القوة", def: "المسافة العمودية من محور الدوران حتى نقطة تأثير القوة." },
+            { term: "العزم (τ)", def: "الأثر الدوراني للقوة وقاس بوحدة N·m." },
+            { term: "مركز الكتلة", def: "النقطة في الجسم التي تتحرك بالطريقة نفسها التي يتحرك بها الجسيم النقطي." }
+          ],
+          quiz: {
+            question: "لفتح باب مغلق بأقل قوة ممكنة، أين يُفضل التأثير بالقوة؟",
+            options: ["عند طرف الباب البعيد عن المفصلات وعمودياً", "بالقرب من المفصلات مباشرة", "بشكل موازٍ لسطح الباب", "في منتصف الباب بزاوية حادة"],
+            correct: 0
+          },
+          flap: "يزداد العزم لفتح الباب كلما زاد طول ذراع القوة r وكانت الزاوية قائمة (sin 90° = 1)، مما يعطي أعلى قيمة للعزم بأقل قوة مثرة.",
+          elementsDetails: {
+            "plank": {
+              title: "لوح الأرجوحة",
+              body: "لوح صلب يدور حول محور ارتكاز ويكون متزناً عندما تتساوى العزوم على جانبيه.",
+              katex: "\\sum \\tau = \\tau_1 - \\tau_2 = 0"
+            },
+            "weight1": {
+              title: "الكتلة المؤثرة",
+              body: "كتلة تولد قوة وزنه رأسي إلى أسفل بعزم يساهم في تدوير اللوح.",
+              katex: "\\tau_1 = F_{g1} \\cdot r_1"
+            },
+            "fulcrum": {
+              title: "نقطة الارتكاز",
+              body: "المحور الثابت الذي يدور حوله اللوح وتلتقي عنده قوى الدعم العمودية.",
+              katex: "F_N = F_{g1} + F_{g2}"
+            }
+          }
+        },
+        {
+          id: 4,
+          chapterTag: "الفصل 3: الزخم وحفظه | Section 3-1",
+          title: "الدفع والزخم الخطي",
+          summary: "الزخم الخطي للجسم (p) يساوي حاصل ضرب كتلته m في سرعته المتجهة v. والدفع الناتج عن القوة يساوي حاصل ضرب متوسط القوة F في زمن تأثيرها Δt وهو يساوي التغير في الزخم.",
+          formula: "p = m v, \\quad F \\Delta t = \\Delta p",
+          formulaDesc: "نظرية الدفع - الزخم الخطي.",
+          vocab: [
+            { term: "الزخم (p)", def: "حاصل ضرب كتلة الجسم في سرعته المتجهة (kg·m/s)." },
+            { term: "الدفع", def: "حاصل ضرب القوة المؤثرة في زمن تأثيرها (N·s)." },
+            { term: "الوسادة الهوائية", def: "أداة زادت زمن الاصطدام فتخفض القوة المؤثرة على السائق." }
+          ],
+          quiz: {
+            question: "كيف تقلل الوسادة الهوائية في السيارات من خطر الاصطدام؟",
+            options: ["تزيد زمن الاصطدام Δt فيقل متوسط القوة F", "تقلل زمن الاصطدام وتزيد القوة", "تلغي التغير في الزخم بالكامل", "تمنع حدوث التوقف تاماً"],
+            correct: 0
+          },
+          flap: "تعتمد الوسادة الهوائية على توفير نفس التغير في الزخم ولكن على فترة زمنية أطول Δt، فتصبح القوة F الناتجة صغيرة وآمنة لراكب السيارة.",
+          elementsDetails: {
+            "car": {
+              title: "السيارة المتصادمة",
+              body: "تتحرك بزخم ابتدائي يتغير أثناء الاصطدام طبقاً لمقدار الدفع الخارجي.",
+              katex: "p_i = m v_i"
+            },
+            "airbag": {
+              title: "الوسادة الهوائية",
+              body: "تمتص طاقة الحركة وتزيد زمن التأثير فتخفض متوسط القوة F بشكل ملحوظ.",
+              katex: "F = \\frac{\\Delta p}{\\Delta t}"
+            }
+          }
+        },
+        {
+          id: 5,
+          chapterTag: "الفصل 3: الزخم وحفظه | Section 3-2",
+          title: "حفظ الزخم والتصادمات",
+          summary: "ينص قانون حفظ الزخم على أن زخم أي نظام مغلق ومعزول لا يتغير، حيث يكون الزخم الكلي للنظام قبل التصادم مساوياً للزخم الكلي للنظام بعد التصادم.",
+          formula: "p_{Ai} + p_{Bi} = p_{Af} + p_{Bf}",
+          formulaDesc: "قانون حفظ الزخم الخطي في النظام المغلق والمعزول.",
+          vocab: [
+            { term: "النظام المغلق", def: "النظام الذي لا يكتسب كتلة ولا يفقدها." },
+            { term: "النظام المعزول", def: "النظام الذي تكون محصلة القوى الخارجية عليه صفراً." },
+            { term: "الارتداد (Recoil)", def: "حركة الجسم المعاكسة نتيجة لإطلاق أو دفع جسم آخر." }
+          ],
+          quiz: {
+            question: "عند تدافع متزلجين ساكنين، فإن المتزلج ذو الكتلة الأصغر ينطلق بـ:",
+            options: ["سرعة أكبر في الاتجاه المعاكس", "سرعة أقل في الاتجاه المعاكس", "يبقى ساكناً في مكانه", "نفس سرعة المتزلج الأكبر تماماً"],
+            correct: 0
+          },
+          flap: "بما أن الزخم الابتدائي الكلي صفر، فإن حفظ الزخم يتطلب (m_A v_A = -m_B v_B)، وبالتالي فإن الجسم أصغر كتلة ينطلق بسرعه أكبر ليتساوى زخماهما مقدراً.",
+          elementsDetails: {
+            "skaterA": {
+              title: "المتزلج الأول (الكتلة الكبيرة)",
+              body: "يمتلك كتلة m كبيرة فيكتسب سرعة ارتداد v صغيرة للحفاظ على ثبات الزخم الكلي.",
+              katex: "m_A v_{Af} = -m_B v_{Bf}"
+            },
+            "skaterB": {
+              title: "المتزلج الثاني (الكتلة الصغيرة)",
+              body: "كتلته m صغيرة ولذا ينطلق بسرعة ارتداد v كبيرة في الاتجاه المعاكس.",
+              katex: "v_{Bf} = -\\frac{m_A}{m_B} v_{Af}"
+            }
+          }
+        }
+      ]
+    };
+
+    /* ==========================================
+       2. إعداد مشهد THREE.JS والكاميرا والإضاءة
+       ========================================== */
+    let currentSpreadIndex = 0;
+    const userInteracted3D = [false, false, false, false, false, false];
+
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0e1017);
+    scene.fog = new THREE.FogExp2(0x0e1017, 0.05);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    const defaultCamPos = new THREE.Vector3(0, 5.2, 6.2);
+    const defaultCamTarget = new THREE.Vector3(0, 0.1, 0);
+    camera.position.copy(defaultCamPos);
+    camera.lookAt(defaultCamTarget);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.minDistance = 3.0;
+    controls.maxDistance = 14.0;
+    controls.target.copy(defaultCamTarget);
+
+    const ambientLight = new THREE.AmbientLight(0xfff8eb, 0.85);
+    scene.add(ambientLight);
+
+    const mainSunLight = new THREE.DirectionalLight(0xfffaed, 1.3);
+    mainSunLight.position.set(5, 12, 6);
+    mainSunLight.castShadow = true;
+    mainSunLight.shadow.mapSize.width = 2048;
+    mainSunLight.shadow.mapSize.height = 2048;
+    scene.add(mainSunLight);
+
+    const fillWarmLight = new THREE.DirectionalLight(0x93c5fd, 0.5);
+    fillWarmLight.position.set(-6, 8, -4);
+    scene.add(fillWarmLight);
+
+    /* ==========================================
+       3. الطاولة الخشبية والكتاب المفتوح المسطح
+       ========================================== */
+    const deskGeo = new THREE.PlaneGeometry(24, 18);
+    const deskMat = new THREE.MeshStandardMaterial({ color: 0x1a1816, roughness: 0.85, metalness: 0.1 });
+    const deskMesh = new THREE.Mesh(deskGeo, deskMat);
+    deskMesh.rotation.x = -Math.PI / 2;
+    deskMesh.position.y = -0.05;
+    deskMesh.receiveShadow = true;
+    scene.add(deskMesh);
+
+    const bookGroup = new THREE.Group();
+    scene.add(bookGroup);
+
+    const coverGeo = new THREE.BoxGeometry(7.6, 0.12, 5.4);
+    const coverMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.4 });
+    const coverMesh = new THREE.Mesh(coverGeo, coverMat);
+    coverMesh.position.y = 0.01;
+    coverMesh.castShadow = true;
+    coverMesh.receiveShadow = true;
+    bookGroup.add(coverMesh);
+
+    const spineGeo = new THREE.BoxGeometry(0.16, 0.14, 5.6);
+    const spineMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.5 });
+    const spineMesh = new THREE.Mesh(spineGeo, spineMat);
+    spineMesh.position.set(0, 0.02, 0);
+    bookGroup.add(spineMesh);
+
+    const pageWidth = 3.5;
+    const pageHeight = 4.9;
+    const pageGeo = new THREE.PlaneGeometry(pageWidth, pageHeight);
+    const paperMat = new THREE.MeshStandardMaterial({ color: 0xfcf9f2, roughness: 0.9, side: THREE.DoubleSide });
+
+    const leftPageMesh = new THREE.Mesh(pageGeo, paperMat);
+    leftPageMesh.rotation.x = -Math.PI / 2;
+    leftPageMesh.position.set(-1.85, 0.08, 0);
+    leftPageMesh.receiveShadow = true;
+    bookGroup.add(leftPageMesh);
+
+    const rightPageMesh = new THREE.Mesh(pageGeo, paperMat);
+    rightPageMesh.rotation.x = -Math.PI / 2;
+    rightPageMesh.position.set(1.85, 0.08, 0);
+    rightPageMesh.receiveShadow = true;
+    bookGroup.add(rightPageMesh);
+
+    /* ==========================================
+       4. إنشاء المجسمات والتجارب المنبثقة 3D
+       ========================================== */
+    const modelsGroup = new THREE.Group();
+    modelsGroup.position.set(0, 0.12, 0);
+    bookGroup.add(modelsGroup);
+
+    function createMat(colorHex, emissive = 0x000000) {
+      return new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: emissive,
+        roughness: 0.35,
+        metalness: 0.15
+      });
+    }
+
+    let spreadModels = [];
+
+    function build3DPopupModels() {
+      while (modelsGroup.children.length > 0) {
+        modelsGroup.remove(modelsGroup.children[0]);
+      }
+      spreadModels = [];
+
+      // 0. كبلر
+      const m0 = new THREE.Group();
+      const sun = new THREE.Mesh(new THREE.SphereGeometry(0.45, 32, 32), createMat(0xf59e0b, 0xd97706));
+      sun.position.set(-0.9, 0.6, 0);
+      sun.name = "sun";
+      m0.add(sun);
+
+      const curve = new THREE.EllipseCurve(-0.3, 0, 1.9, 1.2, 0, 2 * Math.PI, false, 0);
+      const points = curve.getPoints(64);
+      const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+      const orbitLine = new THREE.LineLoop(orbitGeo, new THREE.LineBasicMaterial({ color: 0x3b82f6, linewidth: 3 }));
+      orbitLine.rotation.x = Math.PI / 2;
+      orbitLine.position.y = 0.1;
+      orbitLine.name = "orbit";
+      m0.add(orbitLine);
+
+      const planet = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 24), createMat(0x2563eb));
+      planet.position.set(1.0, 0.6, 0);
+      planet.name = "planet";
+      planet.castShadow = true;
+      m0.add(planet);
+      m0.userData = { planet, orbitCurve: curve, angle: 0 };
+
+      // 1. كافندش
+      const m1 = new THREE.Group();
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 16), createMat(0x475569));
+      stand.position.y = 0.9;
+      m1.add(stand);
+
+      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.9, 8), createMat(0x94a3b8));
+      wire.position.set(0, 1.35, 0);
+      wire.name = "wire";
+      m1.add(wire);
+
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.04, 0.04), createMat(0x334155));
+      arm.position.y = 0.9;
+      m1.add(arm);
+
+      const sm1 = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 20), createMat(0x0284c7));
+      sm1.position.set(-1.0, 0.9, 0);
+      sm1.name = "smallSphere";
+      const sm2 = sm1.clone();
+      sm2.position.set(1.0, 0.9, 0);
+      sm2.name = "smallSphere";
+      m1.add(sm1);
+      m1.add(sm2);
+
+      const bg1 = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 24), createMat(0x1e293b));
+      bg1.position.set(-0.75, 0.9, 0.4);
+      bg1.name = "bigSphere";
+      const bg2 = bg1.clone();
+      bg2.position.set(0.75, 0.9, -0.4);
+      bg2.name = "bigSphere";
+      m1.add(bg1);
+      m1.add(bg2);
+      m1.userData = { arm, sm1, sm2 };
+
+      // 2. الحركة الدورانية
+      const m2 = new THREE.Group();
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.09, 32), createMat(0xe2e8f0));
+      disc.position.y = 0.5;
+      disc.name = "disc";
+      m2.add(disc);
+
+      const outerNode = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), createMat(0xd97706));
+      outerNode.position.set(1.1, 0.1, 0);
+      outerNode.name = "outerNode";
+      disc.add(outerNode);
+
+      const innerNode = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), createMat(0x2563eb));
+      innerNode.position.set(0.4, 0.1, 0);
+      innerNode.name = "innerNode";
+      disc.add(innerNode);
+      m2.userData = { disc };
+
+      // 3. العزم
+      const m3 = new THREE.Group();
+      const fulcrum = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 4), createMat(0x475569));
+      fulcrum.position.y = 0.3;
+      fulcrum.name = "fulcrum";
+      m3.add(fulcrum);
+
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.07, 0.45), createMat(0xd97706));
+      plank.position.y = 0.63;
+      plank.name = "plank";
+      m3.add(plank);
+
+      const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), createMat(0x2563eb));
+      w1.position.set(-0.95, 0.25, 0);
+      w1.name = "weight1";
+      plank.add(w1);
+      m3.userData = { plank };
+
+      // 4. الدفع والزخم
+      const m4 = new THREE.Group();
+      const car = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.35), createMat(0xd97706));
+      car.position.set(-0.8, 0.45, 0);
+      car.name = "car";
+      m4.add(car);
+
+      const airbag = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 20), createMat(0xf8fafc));
+      airbag.position.set(0.8, 0.45, 0);
+      airbag.name = "airbag";
+      airbag.scale.set(0.2, 0.2, 0.2);
+      m4.add(airbag);
+      m4.userData = { car, airbag };
+
+      // 5. حفظ الزخم
+      const m5 = new THREE.Group();
+      const skaterA = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.7, 16), createMat(0x1e40af));
+      skaterA.position.set(-0.35, 0.45, 0);
+      skaterA.name = "skaterA";
+      const skaterB = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 16), createMat(0x16a34a));
+      skaterB.position.set(0.35, 0.35, 0);
+      skaterB.name = "skaterB";
+      m5.add(skaterA);
+      m5.add(skaterB);
+      m5.userData = { skaterA, skaterB };
+
+      spreadModels = [m0, m1, m2, m3, m4, m5];
+
+      spreadModels.forEach((m, idx) => {
+        m.scale.set(1, 0.01, 1);
+        m.visible = (idx === currentSpreadIndex);
+        modelsGroup.add(m);
+      });
+
+      if (spreadModels[currentSpreadIndex]) {
+        spreadModels[currentSpreadIndex].visible = true;
+        gsap.to(spreadModels[currentSpreadIndex].scale, { y: 1, duration: 0.8, ease: "back.out(1.7)" });
+      }
+    }
+
+    build3DPopupModels();
+
+    /* ==========================================
+       5. النقر والتفاعل المباشر مع العناصر 3D
+       ========================================== */
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#book-side-panel') || e.target.closest('.hud-controls') || e.target.closest('.element-info-card')) return;
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const activeModel = spreadModels[currentSpreadIndex];
+      if (!activeModel) return;
+
+      const intersects = raycaster.intersectObjects(activeModel.children, true);
+      if (intersects.length > 0) {
+        let clickedObj = intersects[0].object;
+        let elementName = clickedObj.name;
+        
+        if (!elementName && clickedObj.parent) elementName = clickedObj.parent.name;
+
+        if (elementName && textbookData.spreads[currentSpreadIndex].elementsDetails[elementName]) {
+          showElementInfo(textbookData.spreads[currentSpreadIndex].elementsDetails[elementName]);
+          triggerModelAnimation(currentSpreadIndex, activeModel);
+        }
+      }
+    });
+
+    function showElementInfo(details) {
+      document.getElementById('info-card-title').innerText = details.title;
+      document.getElementById('info-card-body').innerText = details.body;
+      
+      const katexBox = document.getElementById('info-card-katex');
+      if (details.katex) {
+        katexBox.style.display = 'block';
+        katex.render(details.katex, katexBox, { throwOnError: false });
+      } else {
+        katexBox.style.display = 'none';
+      }
+
+      document.getElementById('element-info-card').classList.add('active');
+    }
+
+    function closeElementInfo() {
+      document.getElementById('element-info-card').classList.remove('active');
+    }
+
+    function triggerModelAnimation(index, modelGroup) {
+      userInteracted3D[index] = true;
+
+      if (index === 0) {
+        gsap.to(modelGroup.userData, { angle: "+=3.14", duration: 1.2, ease: "power2.out" });
+      } else if (index === 1) {
+        gsap.to(modelGroup.userData.arm.rotation, { y: "+=0.5", duration: 1, yoyo: true, repeat: 1 });
+      } else if (index === 2) {
+        gsap.to(modelGroup.userData.disc.rotation, { y: "+=6.28", duration: 1.5, ease: "power1.inOut" });
+      } else if (index === 3) {
+        gsap.to(modelGroup.userData.plank.rotation, { z: 0.15, duration: 0.6, yoyo: true, repeat: 1 });
+      } else if (index === 4) {
+        gsap.to(modelGroup.userData.car.position, { x: 0.5, duration: 0.4, yoyo: true, repeat: 1 });
+        gsap.to(modelGroup.userData.airbag.scale, { x: 1, y: 1, z: 1, duration: 0.3, yoyo: true, repeat: 1 });
+      } else if (index === 5) {
+        gsap.to(modelGroup.userData.skaterA.position, { x: -0.9, duration: 0.8, yoyo: true, repeat: 1 });
+        gsap.to(modelGroup.userData.skaterB.position, { x: 0.9, duration: 0.8, yoyo: true, repeat: 1 });
+      }
+    }
+
+    /* ==========================================
+       6. واجهة المستخدم والتنقل بين الدروس
+       ========================================== */
+    function updateSpreadUI(index) {
+      const data = textbookData.spreads[index];
+      closeElementInfo();
+
+      document.getElementById('ui-chapter-tag').innerText = data.chapterTag;
+      document.getElementById('ui-lesson-title').innerText = data.title;
+      document.getElementById('ui-concept-summary').innerText = data.summary;
+      document.getElementById('hud-lesson-name').innerText = (index + 1) + ". " + data.title;
+
+      // المعادلة
+      const formulaEl = document.getElementById('ui-formula-katex');
+      katex.render(data.formula, formulaEl, { throwOnError: false });
+      document.getElementById('ui-formula-desc').innerText = data.formulaDesc;
+
+      // المفردات
+      const vocabContainer = document.getElementById('ui-vocab-list');
+      vocabContainer.innerHTML = '';
+      data.vocab.forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'vocab-item';
+        item.innerHTML = `<div class="vocab-term">${v.term}</div><div class="vocab-def">${v.def}</div>`;
+        vocabContainer.appendChild(item);
+      });
+
+      // الاختبار
+      document.getElementById('ui-quiz-question').innerText = data.quiz.question;
+      const quizOptsContainer = document.getElementById('ui-quiz-options');
+      quizOptsContainer.innerHTML = '';
+      data.quiz.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-opt-btn';
+        btn.innerText = optText;
+        btn.onclick = () => handleQuizSelect(optIdx, data.quiz.correct, btn);
+        quizOptsContainer.appendChild(btn);
+      });
+
+      // طية الصفحة
+      const flapCover = document.getElementById('ui-flap-cover');
+      const flapContent = document.getElementById('ui-flap-content');
+      flapCover.innerText = "🔒 طي الصفحة: اكتشف التفسير العلمي";
+      flapContent.classList.remove('show');
+      flapContent.innerText = data.flap;
+
+      updateTOCActiveState();
+    }
+
+    function handleQuizSelect(selectedIdx, correctIdx, btnEl) {
+      const allBtns = document.querySelectorAll('.quiz-opt-btn');
+      allBtns.forEach(b => b.disabled = true);
+
+      if (selectedIdx === correctIdx) {
+        btnEl.classList.add('selected-correct');
+      } else {
+        btnEl.classList.add('selected-wrong');
+        allBtns[correctIdx].classList.add('selected-correct');
+      }
+      document.getElementById('ui-flap-cover').innerText = "🔓 افتح طي الصفحة لرؤية التفسير العلمي!";
+    }
+
+    function toggleFlap() {
+      document.getElementById('ui-flap-content').classList.toggle('show');
+    }
+
+    function toggleBookPanel() {
+      document.getElementById('book-side-panel').classList.toggle('hidden');
+    }
+
+    function navigateSpread(direction) {
+      let nextIndex = currentSpreadIndex + direction;
+      if (nextIndex < 0 || nextIndex >= textbookData.spreads.length) return;
+
+      const oldModel = spreadModels[currentSpreadIndex];
+      const newModel = spreadModels[nextIndex];
+
+      if (oldModel && newModel) {
+        gsap.to(oldModel.scale, {
+          y: 0.01, duration: 0.4, ease: "power2.in", onComplete: () => {
+            oldModel.visible = false;
+            currentSpreadIndex = nextIndex;
+            newModel.visible = true;
+            gsap.to(newModel.scale, { y: 1, duration: 0.6, ease: "back.out(1.7)" });
+            updateSpreadUI(currentSpreadIndex);
+          }
+        });
+      }
+    }
+
+    /* ==========================================
+       7. الفهرس وإعادة ضبط المشهد
+       ========================================== */
+    function buildTOCDrawer() {
+      const drawer = document.getElementById('toc-drawer');
+      drawer.innerHTML = '';
+      textbookData.spreads.forEach((spread, idx) => {
+        const item = document.createElement('div');
+        item.className = 'toc-item' + (idx === currentSpreadIndex ? ' active' : '');
+        item.innerText = `${idx + 1}. ${spread.title}`;
+        item.onclick = () => {
+          if (idx !== currentSpreadIndex) navigateSpread(idx - currentSpreadIndex);
+          toggleTOC();
+        };
+        drawer.appendChild(item);
+      });
+    }
+
+    function toggleTOC() {
+      document.getElementById('toc-drawer').classList.toggle('active');
+    }
+
+    function updateTOCActiveState() {
+      const items = document.querySelectorAll('.toc-item');
+      items.forEach((item, idx) => {
+        if (idx === currentSpreadIndex) item.classList.add('active');
+        else item.classList.remove('active');
+      });
+    }
+
+    function resetCameraView() {
+      gsap.to(camera.position, {
+        x: defaultCamPos.x, y: defaultCamPos.y, z: defaultCamPos.z, duration: 1.2, ease: "power2.out",
+        onUpdate: () => camera.lookAt(defaultCamTarget)
+      });
+    }
+
+    /* ==========================================
+       8. الحركة التفاعلية المستمرة
+       ========================================== */
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (spreadModels[0] && spreadModels[0].visible) {
+        const data = spreadModels[0].userData;
+        if (data.orbitCurve) {
+          data.angle += 0.005;
+          const pt = data.orbitCurve.getPoint(data.angle % 1);
+          data.planet.position.set(pt.x - 0.25, 0.6, pt.y);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // التهيئة
+    buildTOCDrawer();
+    updateSpreadUI(0);
+    animate();
+  </script>
+</body>
+</html>
